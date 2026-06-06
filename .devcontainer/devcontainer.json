@@ -1,0 +1,53 @@
+{
+  "name": "memU (sandbox)",
+  "image": "devbase:memu",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+
+  "runArgs": ["--add-host=host.docker.internal:host-gateway"],
+
+  "mounts": [
+    "source=${localEnv:HOME}/.config/secrets.d,target=/home/dev/.config/secrets.d,type=bind,readonly",
+    "source=${localEnv:HOME}/.aws,target=/home/dev/.aws,type=bind,readonly",
+    "source=${localEnv:HOME}/.azure,target=/home/dev/.azure-host,type=bind,readonly",
+    "source=${localEnv:HOME}/.ssh,target=/home/dev/.ssh,type=bind,readonly",
+    "source=${localEnv:DOTFILES_SRC},target=/home/dev/.dotfiles-src,type=bind,readonly",
+    "source=${localEnv:HOME}/.config/gh,target=/home/dev/.gh-host,type=bind,readonly",
+    "source=${localEnv:HOME}/.config/gcloud,target=/home/dev/.gcloud-host,type=bind,readonly",
+    "source=${localWorkspaceFolder}/.devcontainer/claude-onboarding-seed.json,target=/home/dev/.claude-seed.json,type=bind,readonly",
+    "source=${localEnv:HOME}/.claude/projects,target=/home/dev/.claude/projects,type=bind",
+    "source=${localEnv:HOME}/.claude-containers/memU/plugins,target=/home/dev/.claude/plugins,type=bind"
+  ],
+
+  "containerEnv": {"CLAUDE_CODE_USE_BEDROCK": "1",
+    "ANTHROPIC_MODEL": "us.anthropic.claude-opus-4-8",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "us.anthropic.claude-opus-4-8",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-4-6",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+    "DISABLE_PROMPT_CACHING": "1",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192",
+    "MAX_THINKING_TOKENS": "0",
+    "DISABLE_TELEMETRY": "1",
+    "DISABLE_AUTOUPDATER": "1",
+    "CLAUDE_CODE_PLUGIN_PREFER_HTTPS": "1",
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "MEMU_DB_URL": "postgresql://robert@host.docker.internal:5432/memu",
+    "PGUSER": "robert",
+    "LMSTUDIO_BASE_URL": "http://host.docker.internal:1234/v1",
+    "AZURE_CONFIG_DIR": "/home/dev/.azure",
+    "AWS_PROFILE": "humanaoffsec",
+    "AWS_REGION": "${localEnv:AWS_REGION}",
+    "AWS_DEFAULT_REGION": "${localEnv:AWS_REGION}",
+    "FIRECRAWL_API_KEY": "${localEnv:FIRECRAWL_API_KEY}",
+    "AUGMENT_SESSION_AUTH": "${localEnv:AUGMENT_SESSION_AUTH}",
+    "PERPLEXITY_SESSION_TOKEN": "${localEnv:PERPLEXITY_SESSION_TOKEN}",
+    "GH_CONFIG_DIR": "/home/dev/.config-rw/gh",
+    "CLOUDSDK_CONFIG": "/home/dev/.config-rw/gcloud",
+    "GOOGLE_APPLICATION_CREDENTIALS": "/home/dev/.config-rw/gcloud/application_default_credentials.json",
+    "CLOUDSDK_PYTHON": "/usr/bin/python3"
+  },"postStartCommand": "claude install latest 2>/dev/null || true; if [ -d /home/dev/.dotfiles-src ] && command -v chezmoi >/dev/null; then mkdir -p /tmp/cm/cache /tmp/cm/config && chezmoi apply --source /home/dev/.dotfiles-src --destination /home/dev --cache /tmp/cm/cache --config /tmp/cm/config/chezmoi.toml --no-tty --force --exclude scripts ~/.claude 2>/dev/null || true; fi; cp -f /home/dev/.claude-seed.json /home/dev/.claude.json 2>/dev/null || true; mkdir -p /home/dev/.azure && if [ -d /home/dev/.azure-host ]; then cp -f /home/dev/.azure-host/azureProfile.json /home/dev/.azure-host/clouds.config /home/dev/.azure-host/config /home/dev/.azure-host/az.json /home/dev/.azure-host/msal_token_cache.json /home/dev/.azure-host/service_principal_entries.json /home/dev/.azure 2>/dev/null || true; fi; mkdir -p /home/dev/.config-rw/gh /home/dev/.config-rw/gcloud; if [ -d /home/dev/.gh-host ]; then cp -f /home/dev/.gh-host/config.yml /home/dev/.gh-host/hosts.yml /home/dev/.config-rw/gh/ 2>/dev/null || true; chmod -R u+rwX /home/dev/.config-rw/gh; fi; if [ -d /home/dev/.gcloud-host ]; then for c in credentials.db access_tokens.db application_default_credentials.json active_config; do cp -f /home/dev/.gcloud-host/$c /home/dev/.config-rw/gcloud/ 2>/dev/null || true; done; for d in configurations legacy_credentials; do [ -d /home/dev/.gcloud-host/$d ] && cp -rf /home/dev/.gcloud-host/$d /home/dev/.config-rw/gcloud/ 2>/dev/null || true; done; chmod -R u+rwX /home/dev/.config-rw/gcloud; fi; container-mcp-register 2>/dev/null || true; CONTAINER=1 python3 /home/dev/.dotfiles-src/run_onchange_after_settings-json.py 2>/dev/null || true",
+
+  "remoteUser": "dev",
+  "overrideCommand": true
+}
