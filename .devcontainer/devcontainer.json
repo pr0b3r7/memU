@@ -1,8 +1,8 @@
 {
   "name": "memU (sandbox)",
   "image": "devbase:memu",
-  "workspaceFolder": "/workspace",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "${localWorkspaceFolder}",
+  "workspaceMount": "source=${localWorkspaceFolder},target=${localWorkspaceFolder},type=bind",
 
   "runArgs": ["--add-host=host.docker.internal:host-gateway"],
 
@@ -16,7 +16,7 @@
     "source=${localEnv:HOME}/.config/gcloud,target=/home/dev/.gcloud-host,type=bind,readonly",
     "source=${localWorkspaceFolder}/.devcontainer/claude-onboarding-seed.json,target=/home/dev/.claude-seed.json,type=bind,readonly",
     "source=${localEnv:HOME}/.claude/projects,target=/home/dev/.claude/projects,type=bind",
-    "source=${localEnv:HOME}/.claude-containers/memU/plugins,target=/home/dev/.claude/plugins,type=bind"
+    "source=${localEnv:HOME}/.claude-containers/memU/plugins,target=/home/dev/.claude/plugins,type=bind","source=${localWorkspaceFolder},target=/workspace,type=bind"
   ],
 
   "containerEnv": {"CLAUDE_CODE_USE_BEDROCK": "1",
@@ -31,6 +31,14 @@
     "DISABLE_TELEMETRY": "1",
     "DISABLE_AUTOUPDATER": "1",
     "CLAUDE_CODE_PLUGIN_PREFER_HTTPS": "1",
+    // #6426 7FW: a non-attach shell (cron/2nd terminal) has no GH_TOKEN; without this, the
+    // scoped credential.helper outputs nothing and git would HANG on the interactive prompt.
+    // Fail fast instead. (The attach shell HAS GH_TOKEN via rt-dev-up --remote-env → no prompt.)
+    "GIT_TERMINAL_PROMPT": "0",
+    // #6536: feed the baked container-mcp-register the container's workspaceFolder so the
+    // memU project-key + auggie -w match Claude's cwd-derived project key (= host path now).
+    // ${containerWorkspaceFolder} is the devcontainer-substituted workspaceFolder value.
+    "CONTAINER_WORKSPACE_DIR": "${containerWorkspaceFolder}",
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "MEMU_DB_URL": "postgresql://robert@host.docker.internal:5432/memu",
     "PGUSER": "robert",
@@ -46,7 +54,7 @@
     "CLOUDSDK_CONFIG": "/home/dev/.config-rw/gcloud",
     "GOOGLE_APPLICATION_CREDENTIALS": "/home/dev/.config-rw/gcloud/application_default_credentials.json",
     "CLOUDSDK_PYTHON": "/usr/bin/python3"
-  },"postStartCommand": "claude install latest 2>/dev/null || true; if [ -d /home/dev/.dotfiles-src ] && command -v chezmoi >/dev/null; then mkdir -p /tmp/cm/cache /tmp/cm/config && chezmoi apply --source /home/dev/.dotfiles-src --destination /home/dev --cache /tmp/cm/cache --config /tmp/cm/config/chezmoi.toml --no-tty --force --exclude scripts ~/.claude 2>/dev/null || true; fi; cp -f /home/dev/.claude-seed.json /home/dev/.claude.json 2>/dev/null || true; mkdir -p /home/dev/.azure && if [ -d /home/dev/.azure-host ]; then cp -f /home/dev/.azure-host/azureProfile.json /home/dev/.azure-host/clouds.config /home/dev/.azure-host/config /home/dev/.azure-host/az.json /home/dev/.azure-host/msal_token_cache.json /home/dev/.azure-host/service_principal_entries.json /home/dev/.azure 2>/dev/null || true; fi; mkdir -p /home/dev/.config-rw/gh /home/dev/.config-rw/gcloud; if [ -d /home/dev/.gh-host ]; then cp -f /home/dev/.gh-host/config.yml /home/dev/.gh-host/hosts.yml /home/dev/.config-rw/gh/ 2>/dev/null || true; chmod -R u+rwX /home/dev/.config-rw/gh; fi; if [ -d /home/dev/.gcloud-host ]; then for c in credentials.db access_tokens.db application_default_credentials.json active_config; do cp -f /home/dev/.gcloud-host/$c /home/dev/.config-rw/gcloud/ 2>/dev/null || true; done; for d in configurations legacy_credentials; do [ -d /home/dev/.gcloud-host/$d ] && cp -rf /home/dev/.gcloud-host/$d /home/dev/.config-rw/gcloud/ 2>/dev/null || true; done; chmod -R u+rwX /home/dev/.config-rw/gcloud; fi; container-mcp-register 2>/dev/null || true; CONTAINER=1 python3 /home/dev/.dotfiles-src/run_onchange_after_settings-json.py 2>/dev/null || true",
+  },"postStartCommand": "claude install latest 2>/dev/null || true; if [ -d /home/dev/.dotfiles-src ] && command -v chezmoi >/dev/null; then mkdir -p /tmp/cm/cache /tmp/cm/config && chezmoi apply --source /home/dev/.dotfiles-src --destination /home/dev --cache /tmp/cm/cache --config /tmp/cm/config/chezmoi.toml --no-tty --force --exclude scripts ~/.claude 2>/dev/null || true; fi; cp -f /home/dev/.claude-seed.json /home/dev/.claude.json 2>/dev/null || true; mkdir -p /home/dev/.azure && if [ -d /home/dev/.azure-host ]; then cp -f /home/dev/.azure-host/azureProfile.json /home/dev/.azure-host/clouds.config /home/dev/.azure-host/config /home/dev/.azure-host/az.json /home/dev/.azure-host/msal_token_cache.json /home/dev/.azure-host/service_principal_entries.json /home/dev/.azure 2>/dev/null || true; fi; mkdir -p /home/dev/.config-rw/gh /home/dev/.config-rw/gcloud; if [ -d /home/dev/.gh-host ]; then cp -f /home/dev/.gh-host/config.yml /home/dev/.gh-host/hosts.yml /home/dev/.config-rw/gh/ 2>/dev/null || true; chmod -R u+rwX /home/dev/.config-rw/gh; fi; if [ -d /home/dev/.gcloud-host ]; then for c in credentials.db access_tokens.db application_default_credentials.json active_config; do cp -f /home/dev/.gcloud-host/$c /home/dev/.config-rw/gcloud/ 2>/dev/null || true; done; for d in configurations legacy_credentials; do [ -d /home/dev/.gcloud-host/$d ] && cp -rf /home/dev/.gcloud-host/$d /home/dev/.config-rw/gcloud/ 2>/dev/null || true; done; chmod -R u+rwX /home/dev/.config-rw/gcloud; fi; container-mcp-register 2>/dev/null || true; claude-rekey-workspace 2>/dev/null || true; container-secrets-load 2>/dev/null || true; CONTAINER=1 python3 /home/dev/.dotfiles-src/run_onchange_after_settings-json.py 2>/dev/null || true; git config --global url.\"https://github.com/\".insteadOf git@github.com: 2>/dev/null || true; git config --global credential.\"https://github.com\".helper '!f() { [ \"$1\" = get ] && [ -n \"$GH_TOKEN\" ] && { echo username=x; echo password=$GH_TOKEN; }; }; f' 2>/dev/null || true; git config --global core.askPass \"\" 2>/dev/null || true",
 
   "remoteUser": "dev",
   "overrideCommand": true
