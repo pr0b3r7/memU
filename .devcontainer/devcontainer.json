@@ -24,10 +24,6 @@
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "us.anthropic.claude-opus-4-8",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-4-6",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
-    "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
-    "DISABLE_PROMPT_CACHING": "1",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192",
-    "MAX_THINKING_TOKENS": "0",
     "DISABLE_TELEMETRY": "1",
     "DISABLE_AUTOUPDATER": "1",
     "CLAUDE_CODE_PLUGIN_PREFER_HTTPS": "1",
@@ -35,6 +31,16 @@
     // scoped credential.helper outputs nothing and git would HANG on the interactive prompt.
     // Fail fast instead. (The attach shell HAS GH_TOKEN via rt-dev-up --remote-env → no prompt.)
     "GIT_TERMINAL_PROMPT": "0",
+    // #6546 SSH agent forwarding (BELT): SSH_AUTH_SOCK points at /ssh-agent so EVERY shell
+    // (attached claude, `devcontainer exec zsh -l`, cron, 2nd terminal) finds the agent — not
+    // just rt-dev-up's --remote-env attach. The SOCKET itself is forwarded ONLY by `rt-dev-up
+    // <repo> <profile> --ssh` (the OrbStack magic path /run/host-services/ssh-auth.sock, the
+    // host launchd agent, NON-INTERACTIVE). This baked env is INERT without --ssh — verified:
+    // with no socket at /ssh-agent, `ssh-add -l` errors gracefully ("No such file or directory"),
+    // git-over-HTTPS + every other command are unaffected, nothing hangs. So it is safe to bake
+    // unconditionally; --ssh controls the actual (security-sensitive) agent exposure. 1Password's
+    // agent is deliberately NOT used (interactive Touch-ID, unusable for autonomous agents).
+    "SSH_AUTH_SOCK": "/ssh-agent",
     // #6536: feed the baked container-mcp-register the container's workspaceFolder so the
     // memU project-key + auggie -w match Claude's cwd-derived project key (= host path now).
     // ${containerWorkspaceFolder} is the devcontainer-substituted workspaceFolder value.
@@ -54,7 +60,7 @@
     "CLOUDSDK_CONFIG": "/home/dev/.config-rw/gcloud",
     "GOOGLE_APPLICATION_CREDENTIALS": "/home/dev/.config-rw/gcloud/application_default_credentials.json",
     "CLOUDSDK_PYTHON": "/usr/bin/python3"
-  },"postStartCommand": "claude install latest 2>/dev/null || true; if [ -d /home/dev/.dotfiles-src ] && command -v chezmoi >/dev/null; then mkdir -p /tmp/cm/cache /tmp/cm/config && chezmoi apply --source /home/dev/.dotfiles-src --destination /home/dev --cache /tmp/cm/cache --config /tmp/cm/config/chezmoi.toml --no-tty --force --exclude scripts ~/.claude 2>/dev/null || true; fi; cp -f /home/dev/.claude-seed.json /home/dev/.claude.json 2>/dev/null || true; mkdir -p /home/dev/.azure && if [ -d /home/dev/.azure-host ]; then cp -f /home/dev/.azure-host/azureProfile.json /home/dev/.azure-host/clouds.config /home/dev/.azure-host/config /home/dev/.azure-host/az.json /home/dev/.azure-host/msal_token_cache.json /home/dev/.azure-host/service_principal_entries.json /home/dev/.azure 2>/dev/null || true; fi; mkdir -p /home/dev/.config-rw/gh /home/dev/.config-rw/gcloud; if [ -d /home/dev/.gh-host ]; then cp -f /home/dev/.gh-host/config.yml /home/dev/.gh-host/hosts.yml /home/dev/.config-rw/gh/ 2>/dev/null || true; chmod -R u+rwX /home/dev/.config-rw/gh; fi; if [ -d /home/dev/.gcloud-host ]; then for c in credentials.db access_tokens.db application_default_credentials.json active_config; do cp -f /home/dev/.gcloud-host/$c /home/dev/.config-rw/gcloud/ 2>/dev/null || true; done; for d in configurations legacy_credentials; do [ -d /home/dev/.gcloud-host/$d ] && cp -rf /home/dev/.gcloud-host/$d /home/dev/.config-rw/gcloud/ 2>/dev/null || true; done; chmod -R u+rwX /home/dev/.config-rw/gcloud; fi; container-mcp-register 2>/dev/null || true; claude-rekey-workspace 2>/dev/null || true; container-secrets-load 2>/dev/null || true; CONTAINER=1 python3 /home/dev/.dotfiles-src/run_onchange_after_settings-json.py 2>/dev/null || true; git config --global url.\"https://github.com/\".insteadOf git@github.com: 2>/dev/null || true; git config --global credential.\"https://github.com\".helper '!f() { [ \"$1\" = get ] && [ -n \"$GH_TOKEN\" ] && { echo username=x; echo password=$GH_TOKEN; }; }; f' 2>/dev/null || true; git config --global core.askPass \"\" 2>/dev/null || true",
+  },"postStartCommand": "claude install latest 2>/dev/null || true; if [ -d /home/dev/.dotfiles-src ] && command -v chezmoi >/dev/null; then mkdir -p /tmp/cm/cache /tmp/cm/config && chezmoi apply --source /home/dev/.dotfiles-src --destination /home/dev --cache /tmp/cm/cache --config /tmp/cm/config/chezmoi.toml --no-tty --force --exclude scripts ~/.claude 2>/dev/null || true; fi; cp -f /home/dev/.claude-seed.json /home/dev/.claude.json 2>/dev/null || true; mkdir -p /home/dev/.azure && if [ -d /home/dev/.azure-host ]; then cp -f /home/dev/.azure-host/azureProfile.json /home/dev/.azure-host/clouds.config /home/dev/.azure-host/config /home/dev/.azure-host/az.json /home/dev/.azure-host/msal_token_cache.json /home/dev/.azure-host/service_principal_entries.json /home/dev/.azure 2>/dev/null || true; fi; mkdir -p /home/dev/.config-rw/gh /home/dev/.config-rw/gcloud; if [ -d /home/dev/.gh-host ]; then cp -f /home/dev/.gh-host/config.yml /home/dev/.gh-host/hosts.yml /home/dev/.config-rw/gh/ 2>/dev/null || true; chmod -R u+rwX /home/dev/.config-rw/gh; fi; if [ -d /home/dev/.gcloud-host ]; then for c in credentials.db access_tokens.db application_default_credentials.json active_config; do cp -f /home/dev/.gcloud-host/$c /home/dev/.config-rw/gcloud/ 2>/dev/null || true; done; for d in configurations legacy_credentials; do [ -d /home/dev/.gcloud-host/$d ] && cp -rf /home/dev/.gcloud-host/$d /home/dev/.config-rw/gcloud/ 2>/dev/null || true; done; chmod -R u+rwX /home/dev/.config-rw/gcloud; fi; container-mcp-register 2>/dev/null || true; claude-rekey-workspace 2>/dev/null || true; container-secrets-load 2>/dev/null || true; CONTAINER=1 python3 /home/dev/.dotfiles-src/run_onchange_after_settings-json.py 2>/dev/null || true; git config --global url.\"https://github.com/\".insteadOf git@github.com: 2>/dev/null || true; git config --global credential.\"https://github.com\".helper '!f() { [ \"$1\" = get ] && [ -n \"$GH_TOKEN\" ] && { echo username=x; echo password=$GH_TOKEN; }; }; f' 2>/dev/null || true; git config --global core.askPass \"\" 2>/dev/null || true; if [ -S /ssh-agent ]; then if SSH_AUTH_SOCK=/ssh-agent ssh-add -l >/dev/null 2>&1; then echo \"[ssh] agent forwarded (--ssh): $(SSH_AUTH_SOCK=/ssh-agent ssh-add -l 2>/dev/null | wc -l | tr -d ' ') key(s) loaded\"; else echo \"[ssh] WARN: /ssh-agent socket present but agent has NO keys — run 'ssh-add' on the HOST (keys live in the launchd agent)\" >&2; fi; fi",
 
   "remoteUser": "dev",
   "overrideCommand": true
